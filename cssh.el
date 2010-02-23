@@ -4,7 +4,7 @@
 ;;
 ;; Author: Dimitri Fontaine <dim@tapoueh.org>
 ;; URL: http://pgsql.tapoueh.org/elisp
-;; Version: 0.5
+;; Version: 0.6
 ;; Created: 2008-09-26
 ;; Keywords: ClusterSSH ssh cssh
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
@@ -39,7 +39,11 @@
 ;;   seems much better for the *cssh* controller buffer to behave as much as
 ;;   possible like a plain emacs buffer.
 ;;
-
+;; CHANGES
+;;
+;; 0.6
+;;  Use tramp to complete the host names
+;;
 
 (require 'ibuffer)
 (require 'term)
