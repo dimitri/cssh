@@ -14,9 +14,6 @@
 ;; Emacs Integration:
 ;; (require 'cssh)
 ;;
-;; When using emacs 22, you need to install pcmpl-ssh by yourself:
-;;  http://www.emacswiki.org/emacs/pcmpl-ssh.el
-;;
 ;; cssh bindings to open ClusterSSH controler in cssh-mode on some buffers:
 ;;
 ;;  C-=       asks remote hostname then opens a term and ssh to it
@@ -44,13 +41,9 @@
 ;;
 
 
-;; we need pcmpl-ssh which is integrated into emacs CVS as of emacs 23, but
-;; under a new name
-(if (> emacs-major-version 22)
-    (require 'pcmpl-unix) 
-  (require 'pcmpl-ssh))
 (require 'ibuffer)
 (require 'term)
+(require 'tramp)
 
 (defgroup cssh nil "ClusterSSH mode customization group"
   :group 'convenience)
@@ -119,6 +112,11 @@ function for 'cssh-resolver"
     (string-match " has address " host-output)
     (substring host-output (match-end 0) -1)))
 
+;; hostname completion, on C-=
+(defun cssh-tramp-hosts ()
+  "ask tramp for a list of hosts that we can reach through ssh"
+  (reduce 'append (mapcar (lambda (x) (mapcar 'cadr (apply (car x) (cdr x)))) 
+			  (tramp-get-completion-function "ssh"))))
 ;;
 ;; This could be seen as recursion init step, opening a single remote host
 ;; shell
@@ -129,7 +127,7 @@ function for 'cssh-resolver"
   (interactive) 
   (let*
       ((ssh-term-remote-host-input
-	(completing-read "Remote host: " (pcmpl-ssh-hosts)))
+	(completing-read "Remote host: " (cssh-tramp-hosts)))
        (ssh-term-remote-host (apply cssh-hostname-resolve 
 				    (list ssh-term-remote-host-input)))
        (ssh-remote-user-part (if cssh-remote-user 
@@ -154,7 +152,7 @@ function for 'cssh-resolver"
 
 ;;;
 ;;; open cssh windows and create buffers from a regexp
-;;; the regexp matches host names as in pcmpl-ssh-hosts
+;;; the regexp matches host names as in cssh-tramp-hosts
 ;;;
 ;;;###autoload
 (defun cssh-regexp-host-start (&optional cssh-buffer-name)
@@ -170,7 +168,7 @@ function for 'cssh-resolver"
   (let* ((re (read-from-minibuffer "Host regexp: "))
 	 (buffer-list '()))
 
-    (dolist (elt (pcmpl-ssh-hosts) buffer-list)
+    (dolist (elt (cssh-tramp-hosts) buffer-list)
       (when (string-match re elt)
 	(let* ((buffer-ssh-command (concat "ssh " elt))
 	       (buffer-name (concat "*" buffer-ssh-command "*")))
