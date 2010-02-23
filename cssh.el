@@ -115,8 +115,10 @@ function for 'cssh-resolver"
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
   "ask tramp for a list of hosts that we can reach through ssh"
-  (reduce 'append (mapcar (lambda (x) (mapcar 'cadr (apply (car x) (cdr x)))) 
+  (reduce 'append (mapcar (lambda (x) 
+			    (remove* nil (mapcar 'cadr (apply (car x) (cdr x)))))
 			  (tramp-get-completion-function "ssh"))))
+
 ;;
 ;; This could be seen as recursion init step, opening a single remote host
 ;; shell
