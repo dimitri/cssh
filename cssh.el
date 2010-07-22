@@ -78,6 +78,10 @@
   "cssh default buffer name, the one in cssh major mode"
   :group 'cssh)
 
+(defcustom cssh-after-command "exit"
+  "command to run when exiting from the remote (ssh) shell"
+  :group 'cssh)
+
 ;;;###autoload
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
@@ -112,7 +116,11 @@
 	(or remote-host
 	    (completing-read "Remote host: " (cssh-tramp-hosts))))
        (ssh-command (concat "ssh " ssh-term-remote-host))
-       (ssh-buffer-name (concat "*" ssh-command "*")))
+       (ssh-buffer-name (concat "*" ssh-command "*"))
+       (cssh-remote-open-command
+	(if cssh-after-command
+	    (format "TERM=%s %s ;%s" cssh-term-type ssh-command cssh-after-command)
+	  (format "TERM=%s %s" cssh-term-type ssh-command))))
 
     (if (get-buffer ssh-buffer-name)
         (unless dont-set-buffer (switch-to-buffer ssh-buffer-name))
@@ -120,7 +128,7 @@
       (ansi-term cssh-shell ssh-command)
       (unless dont-set-buffer (set-buffer (get-buffer ssh-buffer-name)))
       (with-current-buffer ssh-buffer-name
-	(insert (concat "TERM=" cssh-term-type " " ssh-command)))
+	(insert cssh-remote-open-command))
       (unless dont-send-input (term-send-input)))
     ;; return the newly created buffer name
     ssh-buffer-name))
