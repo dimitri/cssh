@@ -4,7 +4,7 @@
 ;;
 ;; Author: Dimitri Fontaine <dim@tapoueh.org>
 ;; URL: http://pgsql.tapoueh.org/elisp
-;; Version: 0.6
+;; Version: 0.7
 ;; Created: 2008-09-26
 ;; Keywords: ClusterSSH ssh cssh
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
@@ -28,6 +28,10 @@
 ;;  C-=   redraw buffer selection in windows
 ;;  C-!   reconnect the ssh, for when your ssh buffers outlive the ssh inside
 ;;
+;; Dired integration:
+;;
+;;  C-=   in dired uses a `dsh' style configuration file to get the remote
+;;        hosts list
 ;;
 ;; TODO
 ;;
@@ -40,6 +44,9 @@
 ;;   possible like a plain emacs buffer.
 ;;
 ;; CHANGES
+;;
+;; 0.7
+;;  Add `dsh' configuration file support from dired
 ;;
 ;; 0.6
 ;;  Use tramp to complete the host names
@@ -94,6 +101,9 @@
 
 ;;;###autoload
 (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
+
+;;;###autoload
+(define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file)
 
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
@@ -198,6 +208,48 @@ marked ibuffers buffers"
 
     (when buffers-all-in-term-mode
       (cssh-open cssh-buffer-name marked-buffers))))
+
+;;;
+;;; Dired integration for opening cssh from a `dsh' config file
+;;;
+(defun cssh-parse-dsh-config-file (filename)
+  "Given a filename, parse it as a dsh filename, return the
+remote hosts list"
+  (with-temp-buffer 
+    (insert-file-contents-literally filename)
+    (let ((l     (split-string (buffer-string)))
+	  (hosts))
+      (dolist (elt l)
+	(if (string-match "^@.+$" elt)
+	    (mapc (lambda (x) (add-to-list 'hosts x)) 
+		  (cssh-parse-dsh-config-file (substring elt 1)))
+	  (add-to-list 'hosts elt)))
+      ;; we return hosts
+      hosts)))
+
+(defun cssh-open-dsh-config-file (filename)
+  "Given a filename, will parse it as a dsh filename and open
+cssh on the hosts"
+  (let ((hosts (cssh-parse-dsh-config-file filename))
+	(buffer-list))
+    (mapc (lambda (x) 
+	    (add-to-list 'buffer-list 
+			 (get-buffer (cssh-term-remote-open x t t))))
+	  hosts)
+
+    (if (endp buffer-list)
+	(message "Empty file %S" filename)
+      
+      (cssh-open cssh-default-buffer-name buffer-list)
+      (with-current-buffer cssh-default-buffer-name
+	(cssh-send-string "")))))
+
+;;;###autoload
+(defun cssh-dired-find-file ()
+  "In dired, have cssh connect to hosts in the `dsh' configuration file."
+  (interactive)
+  ;; dired-get-filename is defined in dired.el
+  (cssh-open-dsh-config-file (dired-get-filename)))
 
 ;;;
 ;;; Entry point
