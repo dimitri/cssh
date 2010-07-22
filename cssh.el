@@ -66,6 +66,10 @@
   :type 'integer
   :group 'cssh)
 
+(defcustom cssh-shell "/bin/bash"
+  "cssh shell to use"
+  :group 'cssh)
+
 (defcustom cssh-term-type "screen"
   "cssh TERM environment variable to export at connection time"
   :group 'cssh)
@@ -74,47 +78,18 @@
   "cssh default buffer name, the one in cssh major mode"
   :group 'cssh)
 
-(defcustom cssh-hostname-resolve 'cssh-default-resolver
-  "cssh remote hostname resolving, defauts to using input (hence
-system resolv.conf) You can also use 'cssh-override-resolve"
-  :group 'cssh)
-
-(defcustom cssh-override-nameserver nil
-  "nameserver to use when using the 'cssh-override-resolver
-function for 'cssh-resolver"
-  :group 'cssh)
-
-(defcustom cssh-override-domain nil
-  "domain to append to given name when using 'cssh-override-resolver"
-  :group 'cssh)
-
-(defcustom cssh-remote-user nil
-  "remote username to use to log in, as in ssh user@remote"
-  :group 'cssh)
-
+;;;###autoload
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
 
+;;;###autoload
 (add-hook 'ibuffer-mode-hook 'cssh-turn-on-ibuffer-binding)
 
 ;;;###autoload
+(global-set-key (kbd "C-=") 'cssh-term-remote-open)
+
+;;;###autoload
 (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
-
-;;
-;; cssh remote hostname resolving
-;;
-(defun cssh-default-resolver (name)
-  "default to identity: let ssh use systemwide resolv.conf"
-  name)
-
-(defun cssh-override-resolver (name)
-  "cssh override resolver will use `host $name cssh-override-nameserver`"
-  (let ((host-output (shell-command-to-string 
-		      (format "host %s %s" 
-			      (concat name cssh-override-domain)
-			      cssh-override-nameserver))))
-    (string-match " has address " host-output)
-    (substring host-output (match-end 0) -1)))
 
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
@@ -128,33 +103,27 @@ function for 'cssh-resolver"
 ;; shell
 ;;
 ;;;###autoload
-(defun cssh-term-remote-open ()
+(defun cssh-term-remote-open 
+  (&optional remote-host dont-set-buffer dont-send-input)
   "Opens a M-x term and type in ssh remotehost with given hostname"
   (interactive) 
   (let*
-      ((ssh-term-remote-host-input
-	(completing-read "Remote host: " (cssh-tramp-hosts)))
-       (ssh-term-remote-host (apply cssh-hostname-resolve 
-				    (list ssh-term-remote-host-input)))
-       (ssh-remote-user-part (if cssh-remote-user 
-				 (concat cssh-remote-user "@") 
-			       nil))
-       (ssh-command (concat "ssh " ssh-remote-user-part ssh-term-remote-host))
+      ((ssh-term-remote-host
+	(or remote-host
+	    (completing-read "Remote host: " (cssh-tramp-hosts))))
+       (ssh-command (concat "ssh " ssh-term-remote-host))
        (ssh-buffer-name (concat "*" ssh-command "*")))
 
     (if (get-buffer ssh-buffer-name)
-        (switch-to-buffer ssh-buffer-name)
+        (unless dont-set-buffer (switch-to-buffer ssh-buffer-name))
       
-      (ansi-term "/bin/bash" ssh-command)
-      (set-buffer (get-buffer ssh-buffer-name))
-      (when (not (eq ssh-term-remote-host-input ssh-term-remote-host))
-	(rename-buffer 
-	 (concat "*ssh " ssh-remote-user-part ssh-term-remote-host-input "*")))
-      (insert (concat "TERM=" cssh-term-type " " ssh-command))
-      (term-send-input))))
-
-;;;###autoload
-(global-set-key (kbd "C-=") 'cssh-term-remote-open)
+      (ansi-term cssh-shell ssh-command)
+      (unless dont-set-buffer (set-buffer (get-buffer ssh-buffer-name)))
+      (with-current-buffer ssh-buffer-name
+	(insert (concat "TERM=" cssh-term-type " " ssh-command)))
+      (unless dont-send-input (term-send-input)))
+    ;; return the newly created buffer name
+    ssh-buffer-name))
 
 ;;;
 ;;; open cssh windows and create buffers from a regexp
@@ -172,19 +141,12 @@ function for 'cssh-resolver"
 	(or cssh-buffer-name cssh-default-buffer-name))
   
   (let* ((re (read-from-minibuffer "Host regexp: "))
-	 (buffer-list '()))
+	 (buffer-list))
 
     (dolist (elt (cssh-tramp-hosts) buffer-list)
       (when (string-match re elt)
-	(let* ((buffer-ssh-command (concat "ssh " elt))
-	       (buffer-name (concat "*" buffer-ssh-command "*")))
-
-	  (unless (get-buffer buffer-name)
-	    (ansi-term "/bin/bash" buffer-ssh-command)
-	    (with-current-buffer buffer-name
-	      (insert (concat "TERM=" cssh-term-type " " buffer-ssh-command))))
-	  
-	  (add-to-list 'buffer-list (get-buffer buffer-name)))))
+	(add-to-list 'buffer-list 
+		     (get-buffer (cssh-term-remote-open elt t t)))))
 
     (message "%S" buffer-list)
 
