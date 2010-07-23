@@ -93,7 +93,7 @@
   "command to run when exiting from the remote (ssh) shell"
   :group 'cssh)
 
-(defcustom cssh-dsh-path '("~/.dsh" "/etc/dsh")
+(defcustom cssh-dsh-path '("~/.dsh/group" "/etc/dsh/group")
   "Where to look for `dsh' configuration files (cssh groups)"
   :group 'cssh)
 
