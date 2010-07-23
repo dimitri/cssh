@@ -45,6 +45,9 @@
 ;;
 ;; CHANGES
 ;;
+;; 0.8
+;;  Add `dsh' support from the main C-= function, using @group notation
+;;
 ;; 0.7
 ;;  Add `dsh' configuration file support from dired
 ;;
@@ -55,6 +58,7 @@
 (require 'ibuffer)
 (require 'term)
 (require 'tramp)
+(require 'cl)
 
 (defgroup cssh nil "ClusterSSH mode customization group"
   :group 'convenience)
@@ -89,6 +93,10 @@
   "command to run when exiting from the remote (ssh) shell"
   :group 'cssh)
 
+(defcustom cssh-dsh-path '("~/.dsh" "/etc/dsh")
+  "Where to look for `dsh' configuration files (cssh groups)"
+  :group 'cssh)
+
 ;;;###autoload
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
@@ -111,6 +119,24 @@
   (reduce 'append (mapcar (lambda (x) 
 			    (remove* nil (mapcar 'cadr (apply (car x) (cdr x)))))
 			  (tramp-get-completion-function "ssh"))))
+
+(defun cssh-dsh-groups (&optional dsh-path)
+  "Returns a list of the defined dsh groups"
+  (let ((groups))
+    (mapc
+     (lambda (dsh-path) 
+       (when (file-directory-p dsh-path)
+	 (let ((default-directory dsh-path))
+	   (dolist (g (directory-files dsh-path))
+	     (unless (file-directory-p g)
+	       (add-to-list 'groups (concat "@" g)))))))
+     (if dsh-path (list dsh-path) cssh-dsh-path))
+    groups))
+
+(defun cssh-get-hosts-list ()
+  "Returns a list of both tramp known hosts and `dsh' groups from
+the cssh-dsh-path"
+  `(,@(cssh-tramp-hosts) ,@(cssh-dsh-groups)))
 
 ;;
 ;; support function for opening the remote terminal
@@ -145,8 +171,10 @@ Return the buffer name where to find the terminal."
 (defun cssh-term-remote-open ()
   "Prompt for a remote host to connect to, and open a term there."
   (interactive) 
-  (let ((remote-host (completing-read "Remote host: " (cssh-tramp-hosts))))
-    (cssh-term-create remote-host)))
+  (let ((remote-host (completing-read "Remote host: " (cssh-get-hosts-list))))
+    (if (string-match "^@" remote-host)
+	(cssh-open-dsh-group remote-host)
+    (cssh-term-create remote-host))))
 
 ;;;
 ;;; open cssh windows and create buffers from a regexp
@@ -253,6 +281,17 @@ cssh on the hosts"
       (cssh-open cssh-default-buffer-name buffer-list)
       (with-current-buffer cssh-default-buffer-name
 	(cssh-send-string "")))))
+
+(defun cssh-open-dsh-group (group)
+  "Given a `dsh' group name, find the file defining it and open cssh"
+  (let ((name (substring group 1)))
+    (cssh-open-dsh-config-file
+     (loop with filename = nil
+	   do (message filename)
+	   until (and filename (file-exists-p filename))
+	   for p in cssh-dsh-path 
+	   for filename = (concat (file-name-as-directory p) name)
+	   finally return filename))))
 
 ;;;###autoload
 (defun cssh-dired-find-file ()
