@@ -222,7 +222,8 @@ remote hosts list"
       (dolist (elt l)
 	(if (string-match "^@.+$" elt)
 	    (mapc (lambda (x) (add-to-list 'hosts x)) 
-		  (cssh-parse-dsh-config-file (substring elt 1)))
+		  (cssh-parse-dsh-config-file 
+		   (concat (file-name-directory filename) (substring elt 1))))
 	  (add-to-list 'hosts elt)))
       ;; we return hosts
       hosts)))
