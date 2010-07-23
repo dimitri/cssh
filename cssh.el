@@ -113,24 +113,17 @@
 			  (tramp-get-completion-function "ssh"))))
 
 ;;
-;; This could be seen as recursion init step, opening a single remote host
-;; shell
-;;
-;;;###autoload
-(defun cssh-term-remote-open 
-  (&optional remote-host dont-set-buffer dont-send-input)
-  "Opens a M-x term and type in ssh remotehost with given hostname"
-  (interactive) 
-  (let*
-      ((ssh-term-remote-host
-	(or remote-host
-	    (completing-read "Remote host: " (cssh-tramp-hosts))))
-       (ssh-command (concat "ssh " ssh-term-remote-host))
-       (ssh-buffer-name (concat "*" ssh-command "*"))
-       (cssh-remote-open-command
-	(if cssh-after-command
-	    (format "TERM=%s %s ;%s" cssh-term-type ssh-command cssh-after-command)
-	  (format "TERM=%s %s" cssh-term-type ssh-command))))
+;; support function for opening the remote terminal
+(defun cssh-term-create (remote-host &optional dont-set-buffer dont-send-input)
+  "Create a terminal and type in ssh remotehost with given hostname.
+
+Return the buffer name where to find the terminal."
+  (let* ((ssh-command (concat "ssh " remote-host))
+	 (ssh-buffer-name (concat "*" ssh-command "*"))
+	 (cssh-remote-open-command
+	  (if cssh-after-command
+	      (format "TERM=%s %s ;%s" cssh-term-type ssh-command cssh-after-command)
+	    (format "TERM=%s %s" cssh-term-type ssh-command))))
 
     (if (get-buffer ssh-buffer-name)
         (unless dont-set-buffer (switch-to-buffer ssh-buffer-name))
@@ -140,8 +133,20 @@
       (with-current-buffer ssh-buffer-name
 	(insert cssh-remote-open-command))
       (unless dont-send-input (term-send-input)))
+
     ;; return the newly created buffer name
     ssh-buffer-name))
+
+;;
+;; This could be seen as recursion init step, opening a single remote host
+;; shell
+;;
+;;;###autoload
+(defun cssh-term-remote-open ()
+  "Prompt for a remote host to connect to, and open a term there."
+  (interactive) 
+  (let ((remote-host (completing-read "Remote host: " (cssh-tramp-hosts))))
+    (cssh-term-create remote-host)))
 
 ;;;
 ;;; open cssh windows and create buffers from a regexp
@@ -161,19 +166,23 @@
   (let* ((re (read-from-minibuffer "Host regexp: "))
 	 (buffer-list))
 
-    (dolist (elt (cssh-tramp-hosts) buffer-list)
+    (dolist (elt (cssh-tramp-hosts))
       (when (string-match re elt)
-	(add-to-list 'buffer-list 
-		     (get-buffer (cssh-term-remote-open elt t t)))))
+	(add-to-list 'buffer-list (get-buffer (cssh-term-create elt t t)))))
 
     (message "%S" buffer-list)
 
-    (if (endp buffer-list)
-	(message "No match to %S" re)
-      
-      (cssh-open cssh-buffer-name buffer-list)
-      (with-current-buffer cssh-buffer-name
-	(cssh-send-string "")))))
+    (cond ((endp buffer-list)
+	   (message "No match to %S" re))
+
+	  ((eq 1 (length buffer-list))
+	   (set-buffer (car buffer-list))
+	   (term-send-input))
+
+	  (t
+	   (cssh-open cssh-buffer-name buffer-list)
+	   (with-current-buffer cssh-buffer-name
+	     (cssh-send-string ""))))))
 
 ;;;
 ;;; ibuffer interaction: open cssh mode for marked buffers
@@ -235,7 +244,7 @@ cssh on the hosts"
 	(buffer-list))
     (mapc (lambda (x) 
 	    (add-to-list 'buffer-list 
-			 (get-buffer (cssh-term-remote-open x t t))))
+			 (get-buffer (cssh-term-create x t t))))
 	  hosts)
 
     (if (endp buffer-list)
