@@ -55,6 +55,7 @@
 ;;  Use tramp to complete the host names
 ;;
 
+(require 'dired)
 (require 'ibuffer)
 (require 'term)
 (require 'tramp)
