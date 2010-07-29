@@ -150,9 +150,18 @@ Return the buffer name where to find the terminal."
 	 (cssh-remote-open-command
 	  (if cssh-after-command
 	      (format "TERM=%s %s ;%s" cssh-term-type ssh-command cssh-after-command)
-	    (format "TERM=%s %s" cssh-term-type ssh-command))))
+	    (format "TERM=%s %s" cssh-term-type ssh-command)))
+	 (ssh-buffer (get-buffer ssh-buffer-name))
+	 (proc (when ssh-buffer (get-buffer-process ssh-buffer)))
+	 (proc-status (when proc (process-status proc))))
 
-    (if (get-buffer ssh-buffer-name)
+    ;; if the buffer already exists but its proc has been killed, kill also
+    ;; the buffer and start afresh
+    (when (and ssh-buffer (or (not proc) (eq proc-status 'exit)))
+      (kill-buffer ssh-buffer)
+      (setq ssh-buffer nil))
+
+    (if ssh-buffer
         (unless dont-set-buffer (switch-to-buffer ssh-buffer-name))
       
       (ansi-term cssh-shell ssh-command)
