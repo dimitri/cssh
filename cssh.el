@@ -45,6 +45,10 @@
 ;;
 ;; CHANGES
 ;;
+;; 0.9
+;;  Add support for remote directory tracking with support for bash, thanks
+;;  to Sébastien Gross
+;;
 ;; 0.8
 ;;  Add `dsh' support from the main C-= function, using @group notation
 ;;
@@ -98,6 +102,21 @@
   "Where to look for `dsh' configuration files (cssh groups)"
   :group 'cssh)
 
+(defcustom cssh-remote-directory-track
+  `((bash .
+	  ,(concat
+	    ;; enable remote directory tracking
+	    "function prompt_cmd { "
+	    "echo -e \"\\033AnSiTu\" ${TRAMP_USERNAME-$(whoami)};"
+	    "echo -e \"\\033AnSiTc\" $(pwd);"
+	    "echo -e \"\\033AnSiTh\" ${TRAMP_HOSTNAME-$(hostname)}; };"
+	    "export PROMPT_COMMAND=prompt_cmd;"
+	    ;; don't store these lines into shell history
+	    "history -d $((HISTCMD - 1));")))
+  "ALIST defining how to track remote directory from the shell buffer."
+  :group 'cssh)
+
+
 ;;;###autoload
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
@@ -148,9 +167,15 @@ Return the buffer name where to find the terminal."
   (let* ((ssh-command (concat "ssh " remote-host))
 	 (ssh-buffer-name (concat "*" ssh-command "*"))
 	 (cssh-remote-open-command
-	  (if cssh-after-command
-	      (format "TERM=%s %s ;%s" cssh-term-type ssh-command cssh-after-command)
-	    (format "TERM=%s %s" cssh-term-type ssh-command)))
+	  (concat
+	   (format "TERM=%s %s -t %s ;" 
+		   cssh-term-type
+		   ssh-command (file-name-nondirectory cssh-shell)
+		   cssh-after-command)
+	   cssh-after-command))
+	 (cssh-dir-track
+	  (cdr (assoc (intern (file-name-nondirectory cssh-shell))
+		      cssh-remote-directory-track)))
 	 (ssh-buffer (get-buffer ssh-buffer-name))
 	 (proc (when ssh-buffer (get-buffer-process ssh-buffer)))
 	 (proc-status (when proc (process-status proc))))
@@ -168,8 +193,14 @@ Return the buffer name where to find the terminal."
       (unless dont-set-buffer (set-buffer (get-buffer ssh-buffer-name)))
       (with-current-buffer ssh-buffer-name
 	(insert cssh-remote-open-command))
-      (unless dont-send-input (term-send-input)))
 
+      (unless dont-send-input
+	;; validate ssh command
+	(term-send-input)
+	;; enable directory tracking
+	(when cssh-dir-track
+	  (insert cssh-dir-track)
+	  (term-send-input))))
     ;; return the newly created buffer name
     ssh-buffer-name))
 
