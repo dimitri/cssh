@@ -21,7 +21,7 @@
 ;;  C-u C-=   asks for the name of the ClusterSSH controler buffer
 ;;  C-M-=     matches given regexp against ssh known_hosts and open
 ;;            buffers in which ssh <remote> is typed
-;;  C-u C-M-= asks for a name before 
+;;  C-u C-M-= asks for a name before
 ;;
 ;; Special keys while in the *cssh* controller you might want to know about:
 ;;
@@ -136,7 +136,7 @@
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
   "ask tramp for a list of hosts that we can reach through ssh"
-  (reduce 'append (mapcar (lambda (x) 
+  (reduce 'append (mapcar (lambda (x)
 			    (remove* nil (mapcar 'cadr (apply (car x) (cdr x)))))
 			  (tramp-get-completion-function "ssh"))))
 
@@ -144,7 +144,7 @@
   "Returns a list of the defined dsh groups"
   (let ((groups))
     (mapc
-     (lambda (dsh-path) 
+     (lambda (dsh-path)
        (when (file-directory-p dsh-path)
 	 (let ((default-directory dsh-path))
 	   (dolist (g (directory-files dsh-path))
@@ -168,7 +168,7 @@ Return the buffer name where to find the terminal."
 	 (ssh-buffer-name (concat "*" ssh-command "*"))
 	 (cssh-remote-open-command
 	  (concat
-	   (format "TERM=%s %s -t %s ;" 
+	   (format "TERM=%s %s -t %s ;"
 		   cssh-term-type
 		   ssh-command (file-name-nondirectory cssh-shell)
 		   cssh-after-command)
@@ -188,7 +188,7 @@ Return the buffer name where to find the terminal."
 
     (if ssh-buffer
         (unless dont-set-buffer (switch-to-buffer ssh-buffer-name))
-      
+
       (ansi-term cssh-shell ssh-command)
       (unless dont-set-buffer (set-buffer (get-buffer ssh-buffer-name)))
       (with-current-buffer ssh-buffer-name
@@ -211,7 +211,7 @@ Return the buffer name where to find the terminal."
 ;;;###autoload
 (defun cssh-term-remote-open ()
   "Prompt for a remote host to connect to, and open a term there."
-  (interactive) 
+  (interactive)
   (let ((remote-host (completing-read "Remote host: " (cssh-get-hosts-list))))
     (if (string-match "^@" remote-host)
 	(cssh-open-dsh-group remote-host)
@@ -231,7 +231,7 @@ Return the buffer name where to find the terminal."
 		      (generate-new-buffer-name cssh-default-buffer-name)))))
   (setq cssh-buffer-name
 	(or cssh-buffer-name cssh-default-buffer-name))
-  
+
   (let* ((re (read-from-minibuffer "Host regexp: "))
 	 (buffer-list))
 
@@ -270,10 +270,10 @@ Return the buffer name where to find the terminal."
 
 (defun cssh-init-from-ibuffer-marked-buffers (cssh-buffer-name)
   "open cssh global input frame and the buffers windows from
-marked ibuffers buffers" 
+marked ibuffers buffers"
   (let* ((buffers-all-in-term-mode t)
 	 (marked-buffers (ibuffer-get-marked-buffers)))
-    
+
     (dolist (elt marked-buffers)
       (progn
 	(message (buffer-name elt))
@@ -293,14 +293,14 @@ marked ibuffers buffers"
 (defun cssh-parse-dsh-config-file (filename)
   "Given a filename, parse it as a dsh filename, return the
 remote hosts list"
-  (with-temp-buffer 
+  (with-temp-buffer
     (insert-file-contents-literally filename)
     (let ((l     (split-string (buffer-string)))
 	  (hosts))
       (dolist (elt l)
 	(if (string-match "^@.+$" elt)
-	    (mapc (lambda (x) (add-to-list 'hosts x)) 
-		  (cssh-parse-dsh-config-file 
+	    (mapc (lambda (x) (add-to-list 'hosts x))
+		  (cssh-parse-dsh-config-file
 		   (concat (file-name-directory filename) (substring elt 1))))
 	  (add-to-list 'hosts elt)))
       ;; we return hosts
@@ -311,14 +311,14 @@ remote hosts list"
 cssh on the hosts"
   (let ((hosts (cssh-parse-dsh-config-file filename))
 	(buffer-list))
-    (mapc (lambda (x) 
-	    (add-to-list 'buffer-list 
+    (mapc (lambda (x)
+	    (add-to-list 'buffer-list
 			 (get-buffer (cssh-term-create x t t))))
 	  hosts)
 
     (if (endp buffer-list)
 	(message "Empty file %S" filename)
-      
+
       (cssh-open cssh-default-buffer-name buffer-list)
       (with-current-buffer cssh-default-buffer-name
 	(cssh-send-string "")))))
@@ -330,7 +330,7 @@ cssh on the hosts"
      (loop with filename = nil
 	   do (message filename)
 	   until (and filename (file-exists-p filename))
-	   for p in cssh-dsh-path 
+	   for p in cssh-dsh-path
 	   for filename = (concat (file-name-as-directory p) name)
 	   finally return filename))))
 
@@ -352,9 +352,9 @@ cssh on the hosts"
 
 	((eq 1 (length buffer-list))
 	 (set-window-buffer (selected-window) (car buffer-list)))
-	  
+
 	(t
-	 (set-window-buffer 
+	 (set-window-buffer
 	  (selected-window) (get-buffer-create cssh-buffer-name))
 
 	 ;; make the controler buffer then split the window
@@ -388,11 +388,11 @@ cssh on the hosts"
 
 (defun cssh-insert-prev-input (arg)
   (interactive "p")
-  (save-excursion 
+  (save-excursion
     ;; only consider when on last line (even if not already at point-max)
     (when (or (= 1 (forward-line 1)) (eq (point) (point-max)))
       (let ((current-point (point))
-	    (input-beginning-position (+ (length cssh-prompt) 
+	    (input-beginning-position (+ (length cssh-prompt)
 					 (search-backward cssh-prompt))))
 
 	(when (<= input-beginning-position current-point)
@@ -403,11 +403,11 @@ cssh on the hosts"
 
 (defun cssh-insert-next-input (arg)
   (interactive "p")
-  (save-excursion 
+  (save-excursion
     ;; only consider when on last line (even if not already at point-max)
     (when (or (= 1 (forward-line 1)) (eq (point) (point-max)))
       (let ((current-point (point))
-	    (input-beginning-position (+ (length cssh-prompt) 
+	    (input-beginning-position (+ (length cssh-prompt)
 					 (search-backward cssh-prompt))))
 
 	(when (<= input-beginning-position current-point)
@@ -440,7 +440,7 @@ cssh on the hosts"
     (define-key map (kbd "M-p")        'cssh-insert-prev-input)
     (define-key map (kbd "M-n")        'cssh-insert-next-input)
     (define-key map (kbd "C-c C-c")    'cssh-cancel-input)
-    (define-key map (kbd "C-c C-l")    'cssh-clear)    
+    (define-key map (kbd "C-c C-l")    'cssh-clear)
     (define-key map (kbd "C-c C-d")    'cssh-eof)
     (define-key map (kbd "C-c [up]")   'cssh-send-up)
     (define-key map (kbd "C-c [down]") 'cssh-send-down)
@@ -508,9 +508,9 @@ cssh on the hosts"
   ;; only consider when on last line
   (when (= 1 (forward-line 1))
     (save-excursion
-      (let* ((input-beginning-position (+ (length cssh-prompt) 
+      (let* ((input-beginning-position (+ (length cssh-prompt)
 					  (search-backward cssh-prompt)))
-	     (input (buffer-substring 
+	     (input (buffer-substring
 		     input-beginning-position (point-max))))
 
 	(cssh-send-string input)
@@ -564,7 +564,7 @@ depending on split-preference value"
 	(split-window-vertically)))))
 
 (defun cssh-get-third-size (backward? left top right bottom)
-  "Given a window edges and a direction" 
+  "Given a window edges and a direction"
   (let* ((go-horizontal
 	 (if backward? (not split-horizontally-first)
 	   split-horizontally-first)))
@@ -606,7 +606,7 @@ depending on split-preference value"
 		  (size      (apply #'cssh-get-third-size
 				    (cons direction edges)))
 		  (w1        (cssh-split-window direction size))
-		  (w2        (progn (select-window w1) 
+		  (w2        (progn (select-window w1)
 				    (cssh-split-window direction size))))
 
 	     (when (bufferp (car buffer-list))
@@ -628,13 +628,13 @@ depending on split-preference value"
 
 	     (select-window (nth 1 halves))
 
-	     (let* ((h1l 
+	     (let* ((h1l
 		     (cssh-nsplit-window
 		      (butlast buffer-list 3) (not backward?))))
 
 	       (select-window w)
 	       (append h1l
-		       (cssh-nsplit-window 
+		       (cssh-nsplit-window
 			(last buffer-list 3) (not backward?))))))
 
 	  ((= 0 (% n 2))
@@ -644,19 +644,19 @@ depending on split-preference value"
 
 	     (select-window (nth 1 halves))
 
-	     (let* ((h1l 
+	     (let* ((h1l
 		     (cssh-nsplit-window
 		      (butlast buffer-list (/ n 2)) (not backward?))))
 
 	       (select-window w)
 	       (append h1l
-		       (cssh-nsplit-window 
+		       (cssh-nsplit-window
 			(last buffer-list (/ n 2)) (not backward?))))))
 
 	  ((= 0 (% n 3))
 	   ;; cut in three parts then re split
 	   (let* ((thirds (cssh-nsplit-window '(1 2 3) backward?)))
-	     
+
 	     (select-window (nth 1 thirds))
 
 	     (let* ((t1l (cssh-nsplit-window
