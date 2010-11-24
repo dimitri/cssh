@@ -49,6 +49,9 @@
 ;;  Add support for remote directory tracking with support for bash, thanks
 ;;  to Sébastien Gross
 ;;
+;;  Base cssh-controler based comint mode, using a dummy special shell that
+;;  about does while read line; echo $line; done, but with a prompt.
+;;
 ;; 0.8
 ;;  Add `dsh' support from the main C-= function, using @group notation
 ;;
@@ -64,6 +67,7 @@
 (require 'term)
 (require 'tramp)
 (require 'cl)
+(require 'shell)
 
 (defgroup cssh nil "ClusterSSH mode customization group"
   :group 'convenience)
@@ -378,22 +382,15 @@ cssh on the hosts"
   "cssh controller buffer (*cssh*) local buffer list")
 
 ;; we reuse shell-mode and its map
-(require 'shell)
-;; (defvar cssh-mode-map
-;;   (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
-;;     (define-key map [tab]              'cssh-send-tab)
-;;     (define-key map (kbd "RET")        'cssh-send-input)
-;;     (define-key map (kbd "C-j")        'cssh-send-input)
-;;     (define-key map (kbd "C-m")        'cssh-send-input)
-;;     (define-key map (kbd "C-c C-l")    'cssh-clear)
-;;     (define-key map (kbd "C-c C-d")    'cssh-eof)
-;;     (define-key map (kbd "C-c [up]")   'cssh-send-up)
-;;     (define-key map (kbd "C-c [down]") 'cssh-send-down)
-;;     (define-key map (kbd "C-=")        'cssh-reopen)
-;;     (define-key map (kbd "C-!")        'cssh-reconnect-ssh)
-;;     ;; (define-key map (kbd "C-a")        'cssh-bol)
-;;     map)
-;;   "Keymap for `cssh-mode'.")
+(defvar cssh-mode-map
+  (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
+    (define-key map [tab]          'cssh-send-tab)
+    (define-key map (kbd "C-l")    'cssh-clear)
+    (define-key map (kbd "C-d")    'cssh-eof)
+    (define-key map (kbd "C-=")    'cssh-reopen)
+    (define-key map (kbd "C-!")    'cssh-reconnect-ssh)
+    map)
+  "Keymap for `cssh-mode'.")
 
 ;;;###autoload
 (define-derived-mode cssh-mode comint-mode "ClusterSSH"
@@ -414,7 +411,10 @@ cssh on the hosts"
 			 "  echo -n \"%s\";"
 			 "done")
 		 cssh-prompt cssh-prompt)))
-      (make-comint-in-buffer name (current-buffer) program startfile)
+      (setenv "PS1" cssh-prompt)
+      (make-comint-in-buffer name (current-buffer) program startfile "-i")
+      (insert "\n")
+      (comint-send-input)
       (setq comint-input-sender
       	    (lambda (proc string)
       	      (message "cssh comint-input-sender %S %S" proc string)
@@ -430,8 +430,9 @@ cssh on the hosts"
     ;; FIXME: get rid of artefacts elements in cssh-buffer-list
     (when (bufferp elt)
       (with-current-buffer elt
-	(insert string)
-	(term-send-input)))))
+	(ignore-errors
+	  (insert string)
+	  (term-send-input))))))
 
 (defun cssh-send-defun (term-fun)
   "generic function to apply term function to the terms"
@@ -440,14 +441,6 @@ cssh on the hosts"
     (when (bufferp elt)
       (with-current-buffer elt
 	(funcall term-fun)))))
-
-(defun cssh-send-up ()
-  (interactive)
-  (cssh-send-defun 'term-send-up))
-
-(defun cssh-send-down ()
-  (interactive)
-  (cssh-send-defun 'term-send-down))
 
 (defun cssh-send-tab ()
   (interactive)
