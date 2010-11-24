@@ -155,7 +155,7 @@ the cssh-dsh-path"
 
 ;;
 ;; support function for opening the remote terminal
-(defun cssh-term-create (remote-host &optional dont-set-buffer dont-send-input)
+(defun cssh-term-create (remote-host &optional dont-set-buffer)
   "Create a terminal and type in ssh remotehost with given hostname.
 
 Return the buffer name where to find the terminal."
@@ -187,15 +187,11 @@ Return the buffer name where to find the terminal."
       (ansi-term cssh-shell ssh-command)
       (unless dont-set-buffer (set-buffer (get-buffer ssh-buffer-name)))
       (with-current-buffer ssh-buffer-name
-	(insert cssh-remote-open-command))
-
-      (unless dont-send-input
-	;; validate ssh command
+	(insert cssh-remote-open-command)
 	(term-send-input)
 	;; enable directory tracking
-	(when cssh-dir-track
-	  (insert cssh-dir-track)
-	  (term-send-input))))
+	(when cssh-dir-track (insert cssh-dir-track))
+	(term-send-input)))
     ;; return the newly created buffer name
     ssh-buffer-name))
 
@@ -232,7 +228,7 @@ Return the buffer name where to find the terminal."
 
     (dolist (elt (cssh-tramp-hosts))
       (when (string-match re elt)
-	(add-to-list 'buffer-list (get-buffer (cssh-term-create elt t t)))))
+	(add-to-list 'buffer-list (get-buffer (cssh-term-create elt t)))))
 
     (message "%S" buffer-list)
 
@@ -308,7 +304,7 @@ cssh on the hosts"
 	(buffer-list))
     (mapc (lambda (x)
 	    (add-to-list 'buffer-list
-			 (get-buffer (cssh-term-create x t t))))
+			 (get-buffer (cssh-term-create x t))))
 	  hosts)
 
     (if (endp buffer-list)
