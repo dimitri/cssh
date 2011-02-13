@@ -102,17 +102,23 @@
   :group 'cssh)
 
 (defcustom cssh-remote-directory-track
-  `((bash .
-	  ,(concat
-	    ;; enable remote directory tracking
-	    "function prompt_cmd { "
-	    "echo -e \"\\033AnSiTu\" ${TRAMP_USERNAME-$(whoami)};"
-	    "echo -e \"\\033AnSiTc\" $(pwd);"
-	    "echo -e \"\\033AnSiTh\" ${TRAMP_HOSTNAME-$(hostname)}; };"
-	    "export PROMPT_COMMAND=prompt_cmd;"
-	    ;; don't store these lines into shell history
-	    "history -d $((HISTCMD - 1));")))
-  "ALIST defining how to track remote directory from the shell buffer."
+  '((bash .
+	  (lambda (remote)
+	    (concat
+	     ;; enable remote directory tracking
+	     "function prompt_cmd { "
+	     "echo -e \"\\033AnSiTu\" ${TRAMP_USERNAME-$(whoami)};"
+	     "echo -e \"\\033AnSiTc\" $(pwd);"
+	     (format "echo -e \"\\033AnSiTh\" ${TRAMP_HOSTNAME-%s}; };" remote)
+	     "export PROMPT_COMMAND=prompt_cmd;"
+	     ;; don't store these lines into shell history
+	     "history -d $((HISTCMD - 1));"))))
+  "ALIST defining how to track remote directory from the shell buffer.
+
+It associates to shell symbols like 'bash a `lambda' taking a
+single parameter, REMOTE.  This lambda must return a single
+command line that will be sent to the remote host at the terminal
+creation."
   :group 'cssh)
 
 
@@ -194,7 +200,7 @@ Return the buffer name where to find the terminal."
 	(insert cssh-remote-open-command)
 	(term-send-input)
 	;; enable directory tracking
-	(when cssh-dir-track (insert cssh-dir-track))
+	(when cssh-dir-track (insert (funcall cssh-dir-track remote-host)))
 	(term-send-input)))
     ;; return the newly created buffer name
     ssh-buffer-name))
