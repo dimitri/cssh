@@ -126,17 +126,12 @@ creation."
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
 
-;;;###autoload
-(add-hook 'ibuffer-mode-hook 'cssh-turn-on-ibuffer-binding)
-
-;;;###autoload
-(global-set-key (kbd "C-=") 'cssh-term-remote-open)
-
-;;;###autoload
-(global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
-
-;;;###autoload
-(define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file)
+(defun cssh-define-global-bindings ()
+  (interactive)
+  (add-hook 'ibuffer-mode-hook 'cssh-turn-on-ibuffer-binding)
+  (global-set-key (kbd "C-=") 'cssh-term-remote-open)
+  (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
+  (define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file))
 
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
