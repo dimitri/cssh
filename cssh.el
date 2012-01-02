@@ -293,11 +293,12 @@ remote hosts list"
     (let ((l     (split-string (buffer-string)))
 	  (hosts))
       (dolist (elt l)
-	(if (string-match "^@.+$" elt)
-	    (mapc (lambda (x) (add-to-list 'hosts x))
-		  (cssh-parse-dsh-config-file
-		   (concat (file-name-directory filename) (substring elt 1))))
-	  (add-to-list 'hosts elt)))
+	(when (looking-at (rx bol (opt "@") (one-or-more (char alnum ".")) eol))
+	  (if (string-match "^@" elt)
+	      (mapc (lambda (x) (add-to-list 'hosts x))
+		    (cssh-parse-dsh-config-file
+		     (concat (file-name-directory filename) (substring elt 1))))
+	    (add-to-list 'hosts elt))))
       ;; we return hosts
       hosts)))
 
@@ -312,7 +313,7 @@ cssh on the hosts"
 	  hosts)
 
     (if (endp buffer-list)
-	(message "Empty file %S" filename)
+	(message "file %S is not a dsh config file, or empty" filename)
 
       (cssh-open cssh-default-buffer-name buffer-list)
       (with-current-buffer cssh-default-buffer-name
