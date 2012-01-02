@@ -66,6 +66,8 @@
   (require 'cl))
 
 (eval-and-compile
+  (defvar cssh-mode-abbrev-table) ;; for elint.el to notice
+  (defvar dired-mode-map)
   (autoload 'reduce* "cl-seq")
   (autoload 'reduce "cl-seq")
   (autoload 'tramp-get-completion-function "tramp")
@@ -149,16 +151,20 @@ creation."
     map)
   "Keymap for `cssh-mode'.")
 
-;;;###autoload
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
 
+(defun cssh-define-key-dired ()
+  "Define C-c= key."
+  (define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file))
+
 (defun cssh-define-global-bindings ()
+  "Define default C-c= key."
   (interactive)
   (add-hook 'ibuffer-mode-hook 'cssh-turn-on-ibuffer-binding)
+  (add-hook 'cssh-define-key-dired 'cssh-define-key-dired)
   (global-set-key (kbd "C-=") 'cssh-term-remote-open)
-  (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
-  (define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file))
+  (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start))
 
 (defun cssh-newline-and-prompt ()
   "NOT IMPLEMETED.")
