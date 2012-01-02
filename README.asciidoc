@@ -1,0 +1,17 @@
+= cssh
+
+That's a ClusterSSH implementation for Emacs, that relies on +M-x term+.
+
+== Install
+
+Use https://github.com/dimitri/el-get for an easy install, or put the
++cssh.el+ file somewhere in your +load-path+.
+
+== Setup
+
+Add +(cssh-define-global-bindings)+ in your setup, if you use +el-get+ you
+might add that to your +el-get-sources+
+
+	(:name cssh
+	       :after (lambda () (cssh-define-global-bindings)))
+
