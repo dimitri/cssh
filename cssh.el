@@ -294,7 +294,7 @@ remote hosts list"
     (let ((l     (split-string (buffer-string)))
 	  (hosts))
       (dolist (elt l)
-	(when (looking-at (rx bol (opt "@") (one-or-more (char alnum ".")) eol))
+	(when (looking-at (rx bol (opt "@") (one-or-more (char alnum ".-")) eol))
 	  (if (string-match "^@" elt)
 	      (mapc (lambda (x) (add-to-list 'hosts x))
 		    (cssh-parse-dsh-config-file
