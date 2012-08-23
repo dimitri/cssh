@@ -3,7 +3,7 @@
 ;; Copyright (C) 2008 Dimitri Fontaine
 ;;
 ;; Author: Dimitri Fontaine <dim@tapoueh.org>
-;; URL: http://pgsql.tapoueh.org/elisp
+;; URL: http://tapoueh.org/projects.html
 ;; Version: 0.7
 ;; Created: 2008-09-26
 ;; Keywords: ClusterSSH ssh cssh
