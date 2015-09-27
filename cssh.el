@@ -62,12 +62,20 @@
 ;;  Use tramp to complete the host names
 ;;
 
-(require 'dired)
-(require 'ibuffer)
-(require 'term)
-(require 'tramp)
-(require 'cl)
-(require 'shell)
+(eval-when-compile
+  (require 'cl))
+
+(eval-and-compile
+  (defvar cssh-mode-abbrev-table) ;; for elint.el to notice
+  (defvar dired-mode-map)
+  (autoload 'reduce* "cl-seq")
+  (autoload 'reduce "cl-seq")
+  (autoload 'tramp-get-completion-function "tramp")
+  (autoload 'term-send-input "term")
+  (autoload 'ibuffer-get-marked-buffers "ibuffer")
+  (autoload 'dired-get-filename "dired"))
+
+(require 'comint)
 
 (defgroup cssh nil "ClusterSSH mode customization group"
   :group 'convenience)
@@ -121,17 +129,45 @@ command line that will be sent to the remote host at the terminal
 creation."
   :group 'cssh)
 
+;; Private
 
-;;;###autoload
+(defvar cssh-input-ring nil
+  "For `ring-insert'.")
+
+(defvar cssh-input-ring-index nil
+  "Index for ring.")
+
+(defvar cssh-buffer-list '()
+  "cssh controller buffer (*cssh*) local buffer list")
+
+;; we reuse shell-mode and its map
+(defvar cssh-mode-map
+  (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
+    (define-key map [tab]          'cssh-send-tab)
+    (define-key map (kbd "C-l")    'cssh-clear)
+    (define-key map (kbd "C-d")    'cssh-eof)
+    (define-key map (kbd "C-=")    'cssh-reopen)
+    (define-key map (kbd "C-!")    'cssh-reconnect-ssh)
+    map)
+  "Keymap for `cssh-mode'.")
+
 (defun cssh-turn-on-ibuffer-binding ()
   (local-set-key (kbd "C-=") 'cssh-ibuffer-start))
 
+(defun cssh-define-key-dired ()
+  "Define C-c= key."
+  (define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file))
+
 (defun cssh-define-global-bindings ()
+  "Define default C-c= key."
   (interactive)
   (add-hook 'ibuffer-mode-hook 'cssh-turn-on-ibuffer-binding)
+  (add-hook 'cssh-define-key-dired 'cssh-define-key-dired)
   (global-set-key (kbd "C-=") 'cssh-term-remote-open)
-  (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start)
-  (define-key dired-mode-map (kbd "C-=") 'cssh-dired-find-file))
+  (global-set-key (kbd "C-M-=") 'cssh-regexp-host-start))
+
+(defun cssh-newline-and-prompt ()
+  "NOT IMPLEMETED.")
 
 ;; hostname completion, on C-=
 (defun cssh-tramp-hosts ()
@@ -379,20 +415,6 @@ cssh on the hosts"
   "plain C-a is annoying, better target end of prompt"
   (interactive)
   (beginning-of-line) (search-forward cssh-prompt))
-
-(defvar cssh-buffer-list '()
-  "cssh controller buffer (*cssh*) local buffer list")
-
-;; we reuse shell-mode and its map
-(defvar cssh-mode-map
-  (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
-    (define-key map [tab]          'cssh-send-tab)
-    (define-key map (kbd "C-l")    'cssh-clear)
-    (define-key map (kbd "C-d")    'cssh-eof)
-    (define-key map (kbd "C-=")    'cssh-reopen)
-    (define-key map (kbd "C-!")    'cssh-reconnect-ssh)
-    map)
-  "Keymap for `cssh-mode'.")
 
 ;;;###autoload
 (define-derived-mode cssh-mode comint-mode "ClusterSSH"
